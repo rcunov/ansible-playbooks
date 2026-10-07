@@ -1,1 +1,8 @@
-/home/rcunov/ansible/reboot.yml
+---
+- name: Reboot machines
+  hosts: all
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+  tasks:
+    - name: Reboot hosts
+      ansible.builtin.reboot:

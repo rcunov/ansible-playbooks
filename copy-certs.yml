@@ -1,1 +1,36 @@
-/home/rcunov/ansible/copy-certs.yml
+---
+- name: Copy updated SSL certs to hosts that need them
+  hosts: certs
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+  tasks:
+    - name: Copy cert full chains
+      ansible.builtin.copy:
+        src: '/home/rcunov/.acme.sh/*.cunov.net_ecc/fullchain.cer'
+        dest: '{{ cert_path }}/{{ cert_fullchain_name }}'
+        owner: "{{ cert_owner_uid }}"
+        group: "{{ cert_owner_gid }}"
+        mode: u=rw,g=r,o=
+
+    - name: Copy cert private keys
+      ansible.builtin.copy:
+        src: '/home/rcunov/.acme.sh/*.cunov.net_ecc/*.cunov.net.key'
+        dest: '{{ cert_path }}/{{ cert_key_name }}'
+        owner: "{{ cert_owner_uid }}"
+        group: "{{ cert_owner_gid }}"
+        mode: u=rw,g=r,o=
+
+#    - name: Restart caddy container for Docker hosts # compose plugin does not seem to let you specify one container to act on
+#      # https://docs.ansible.com/projects/ansible/latest/collections/community/docker/docker_compose_v2_module.html
+#      ansible.builtin.command: "docker compose restart caddy"
+#      args:
+#        chdir: "{{ cert_compose_path }}"
+#      when: cert_compose_path is defined
+
+    - name: Restart pveproxy service for Proxmox hosts
+      ansible.builtin.systemd:
+        state: restarted
+        daemon_reload: true
+        name: pveproxy
+      when: inventory_hostname in groups['proxmox']
+

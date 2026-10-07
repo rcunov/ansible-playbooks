@@ -1,1 +1,17 @@
-/home/rcunov/ansible/clean-debian.yml
+---
+- name: Clean up Debian packages
+  hosts: all
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+
+  tasks:
+    - name: Do autoremove
+      apt:
+        autoremove: true
+      when: ansible_os_family == "Debian" or ansible_os_family == "Parrot OS"
+      # for some reason, it doesn't work if you run both of these
+      # within the same module
+    - name: Do autoclean
+      apt:
+        autoclean: true
+      when: ansible_os_family == "Debian" or ansible_os_family == "Parrot OS"

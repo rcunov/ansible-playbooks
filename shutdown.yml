@@ -1,1 +1,9 @@
-/home/rcunov/ansible/shutdown.yml
+---
+- name: Shut down machines
+  hosts: all
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+  tasks:
+    - name: Unconditionally shut down the machine with all defaults
+      community.general.shutdown:
+

@@ -1,1 +1,12 @@
-/home/rcunov/ansible/facts.yml
+- hosts: localhost
+  # gather_facts: no
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+
+  tasks:
+    # - setup:
+    #     gather_subset:
+    #       - 'min'
+    - debug:
+        var: ansible_distribution_release
+        # var: ansible_lsb.codename

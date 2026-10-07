@@ -1,1 +1,23 @@
-/home/rcunov/ansible/deploy-docker-userns.yml
+---
+- name: Configure Docker for user namespace remapping
+  hosts: all
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+  vars:
+    config_file: /etc/docker/daemon.json
+
+  tasks:
+  - name: Ensure "dockerns" group exists with correct gid
+    ansible.builtin.group:
+      name: dockerns
+      state: present
+      gid: 165537
+      system: true
+
+  - name: Ensure "dockerns" user exists with correct gid/uid
+    ansible.builtin.user:
+      state: present # wont set system user if already exists
+      name: dockerns
+      uid: 165537
+      group: 165537
+      system: true

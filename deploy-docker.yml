@@ -1,1 +1,83 @@
-/home/rcunov/ansible/deploy-docker.yml
+---
+- name: Deploy Docker to Debian and Ubuntu hosts
+  hosts: all
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+  vars:
+    arch_mapping: # Map ansible_architecture names to Docker's architecture names
+      x86_64: amd64
+      aarch64: arm64
+
+  tasks:
+  - name: Install dependencies
+    ansible.builtin.apt:
+      name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      state: latest
+      update_cache: true
+
+  - name: Create directory for Docker's GPG key
+    ansible.builtin.file:
+      path: /etc/apt/keyrings
+      state: directory
+      mode: '0755'
+
+  - name: Download Docker GPG key
+    ansible.builtin.get_url:
+      # https://download.docker.com/linux/debian/gpg
+      url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+      dest: /etc/apt/keyrings/docker.gpg
+      mode: '0644'
+
+  - name: Print architecture variables
+    ansible.builtin.debug:
+      msg: "Architecture: {{ ansible_architecture }}, Release: {{ ansible_distribution }} {{ ansible_distribution_major_version }} {{ ansible_distribution_release }}"
+
+  - name: Add Docker repository
+    ansible.builtin.apt_repository:
+      repo: >-
+        deb [arch={{ arch_mapping[ansible_architecture] | default(ansible_architecture) }}
+        signed-by=/etc/apt/keyrings/docker.gpg]
+        https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
+      filename: docker
+      state: present
+
+  - name: Install Docker
+    ansible.builtin.apt:
+      name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+      - docker-buildx-plugin
+      state: latest
+      update_cache: true
+
+  - name: Add ansible_user to docker group
+    ansible.builtin.user:
+      name: "{{ ansible_user }}"
+      groups: docker
+      append: true
+    when: (ansible_distribution == "Debian") or
+      (ansible_distribution == "Ubuntu")
+
+  - name: Enable BuildKit
+    ansible.builtin.lineinfile:
+      dest: /etc/docker/daemon.json
+      line: '{ "features": { "buildkit": true } }'
+      create: true
+    when: (ansible_distribution == "Debian") or
+      (ansible_distribution == "Ubuntu")
+
+  - name: Enable and start Docker services
+    ansible.builtin.systemd:
+      name: "{{ item }}"
+      enabled: true
+      state: started
+    loop:
+      - docker.service
+      - containerd.service

@@ -1,1 +1,51 @@
-/home/rcunov/ansible/synchronize-adguardhome.yml
+---
+- name: Synchronize adguardhome yaml configs
+  hosts: adguardhome
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+  tasks:
+    - name: Fetch the file from dns
+      run_once: yes
+      fetch:
+        src: "{{ adguardhome_config_path }}"
+        dest: files/ 
+        flat: true
+      when: inventory_hostname == 'dns.cunov.net'
+
+    - name: Copy the file to mini
+      copy:
+        src: files/AdGuardHome.yaml # file should always be this
+        dest: "{{ adguardhome_config_path }}"
+        owner: 0
+        group: 0
+        mode: '0600'
+      register: config
+      when: inventory_hostname == 'mini.cunov.net'
+
+    - name: Docker Compose down
+      community.docker.docker_compose_v2:
+        project_src: "{{ cert_compose_path }}"
+        state: absent
+      register: output
+      when:
+        - inventory_hostname == 'mini.cunov.net'
+        - config.changed
+
+#    - name: Show results
+#      ansible.builtin.debug:
+#        var: output
+#      when: inventory_hostname == 'mini.cunov.net'
+
+    - name: Docker Compose up
+      community.docker.docker_compose_v2:
+        project_src: "{{ cert_compose_path }}"
+        state: present
+      register: output
+      when:
+        - inventory_hostname == 'mini.cunov.net'
+        - config.changed
+
+#    - name: Show results
+#      ansible.builtin.debug:
+#        var: output
+#      when: inventory_hostname == 'mini.cunov.net'

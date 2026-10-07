@@ -1,1 +1,18 @@
-/home/rcunov/ansible/disable-proxmox-popup.yml
+---
+- name: Disable licensing nag on Proxmox
+  hosts: proxmox
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+
+  tasks:
+    - name: Change JavaScript code
+      ansible.builtin.replace:
+        path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+        regexp: '^(.*)Ext\.Msg\.show\(\{(.*)$\n^(.*)No valid subscription(.*)$'
+        replace: '\1void({\2\n\3No valid subscription\4'
+
+    - name: Restart pveproxy service
+      ansible.builtin.systemd:
+        state: restarted
+        daemon_reload: true
+        name: pveproxy

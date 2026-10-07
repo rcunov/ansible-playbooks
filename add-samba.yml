@@ -1,1 +1,40 @@
-/home/rcunov/ansible/add-samba.yml
+---
+- name: Add Samba share to host storage
+  hosts: all
+  become: true
+  vars_files: ~/.ansible/inventory/vaulted_vars.yml
+  vars:
+    credsPath: /root/.smb-secrets
+    smbUID: 1000
+    smbGID: 1000
+
+  tasks:
+  - name: Install cifs-utils package
+    ansible.builtin.package:
+      name: cifs-utils
+      state: latest
+  - name: Create /mnt/data if it does not exist
+    ansible.builtin.file:
+      path: /mnt/data/
+      state: directory
+      mode: '0755'
+  - name: Create credentials file
+    copy:
+      content: |
+        user={{ smb_user }}
+        password={{ smb_pass }}
+      dest: "{{ credsPath }}"
+      force: yes
+  - name: Secure secrets file permissions
+    ansible.builtin.file:
+      path: "{{ credsPath }}"
+      owner: root
+      group: root
+      mode: '0600'
+  - name: Mount share to /mnt/data
+    ansible.posix.mount:
+      src: //syno.lan/main/
+      path: /mnt/data
+      opts: _netdev,credentials={{ credsPath }},file_mode=0775,dir_mode=0775,uid={{ smbUID }},gid={{ smbGID }}
+      state: mounted
+      fstype: cifs
